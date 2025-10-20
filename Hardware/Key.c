@@ -12,61 +12,59 @@
 所以此处的各个时间阈值最好都设置为20ms的倍数
 所以即使设定时间为50ms，但实际却会是60ms
 */
-//10ms的定时中断
-//取消双击判定，在此处留一处痕迹
-#define KEY_Time_LONG			100
-#define KEY_Time_REPEAT			10
+#define KEY_Time_DOUBLE 		200
+#define KEY_Time_LONG			2000
+#define KEY_Time_REPEAT			100
 
 uint8_t Key_Flag[KEY_COUNT];//不同的位表示不同的事件标志位
 
-//考核项目要求的按键均为下拉输入
+//PB1和PB11初始化为上拉输入;PB13和PB14初始化为下拉输入
 void Key_Init(void)
 {
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA,ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC,ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB,ENABLE);
 	
 	GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_2 | GPIO_Pin_4;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_11;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOA,&GPIO_InitStructure);
+	GPIO_Init(GPIOB,&GPIO_InitStructure);
 	
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_14;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_15;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOC,&GPIO_InitStructure);
+	GPIO_Init(GPIOB,&GPIO_InitStructure);
 }
 
 //形参指定按键；返回当前按键按下状态/未按下状态
 uint8_t Key_GetState(uint8_t n)
 {
-	if (n == KEY_NAME_UP)//0
+	if (n == KEY_1)
 	{
-		if (GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_4) == 0)//上键
+		if (GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_1) == 0)//B1低电平为按下
 		{
 		return KEY_PRESSED;//返回按下
 		}
 		return KEY_UNPRESSED;//返回未按下
 	}
-	else if (n == KEY_NAME_DOWN)//1
+	else if (n == KEY_2)
 	{
-		if (GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_2) == 0)//下键
+		if (GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_11) == 0)//B11低电平为按下
 		{
 		return KEY_PRESSED;
 		}
 		return KEY_UNPRESSED;
 	}
-	else if (n == KEY_NAME_COMFIRM)//2
+	else if (n == KEY_3)
 	{
-		if (GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0) == 0)//确认键
+		if (GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_13) == 1)//B13高电平为按下
 		{
 		return KEY_PRESSED;
 		}
 		return KEY_UNPRESSED;
 	}
-	else if (n == KEY_NAME_BACK)//3
+	else if (n == KEY_4)
 	{
-		if (GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_14) == 0)//返回键
+		if (GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_15) == 1)//B15高电平为按下
 		{
 		return KEY_PRESSED;
 		}
@@ -98,11 +96,11 @@ uint8_t Key_Check(uint8_t n, uint8_t Flag)
 
 void Key_Tick(void)//利用定时中断调用，获取通用的时间基准
 {
-	static uint8_t Count;
-	static uint8_t i;
+	static uint8_t Count;//定义静态变量
+	static uint8_t i;//用于遍历,按键少时可以这么干
 	static uint8_t CurrState[KEY_COUNT],PrevState[KEY_COUNT];//Current,Previous
-	static uint8_t S[KEY_COUNT];//状态变量
-	static uint16_t Time[KEY_COUNT];//长按计时器（此处递减计时）
+	static uint8_t S[KEY_COUNT];//状态变量，同江协状态转移图
+	static uint16_t Time[KEY_COUNT];//长按/双击 计时器（此处递减计时）
 	//静态变量默认值为0，函数退出后值不会丢失
 	
 	for (i = 0;i < KEY_COUNT; i ++)
@@ -113,7 +111,7 @@ void Key_Tick(void)//利用定时中断调用，获取通用的时间基准
 		}
 	}
 	Count++;//计数分频
-	if (Count >= 2)//可过滤按键抖动
+	if (Count >= 20)//可过滤按键抖动，按需调整
 	{
 		Count = 0 ;
 		
@@ -160,20 +158,39 @@ void Key_Tick(void)//利用定时中断调用，获取通用的时间基准
 				}
 			}
 			else if (S[i] == 1)//状态：按键已按下
-			{		
-				if (CurrState[i] == KEY_UNPRESSED)//按键松开
+			{
+				if (CurrState[i] == KEY_UNPRESSED)
+				{
+					Time[i] = KEY_Time_DOUBLE;//设定双击时间（到此分支，长按时间已无效）
+					S[i] = 2;
+				}
+				else if (Time[i] == 0)//长按时间到（超时）
+				{
+					Time[i] = KEY_Time_REPEAT;//设定重复时间
+					Key_Flag[i] |= KEY_LONG;//LONG=1
+					S[i] = 4;
+				}
+			}
+			else if (S[i] == 2)//状态：按键已松开
+			{
+				if (CurrState[i] == KEY_PRESSED)
+				{
+					Key_Flag[i] |= KEY_DOUBLE;//DOUBLE = 1
+					S[i] = 3;
+				}
+				else if (Time[i] == 0)//双击时间到（超时）
 				{
 					Key_Flag[i] |= KEY_SINGLE;//SINGLE = 1
 					S[i] = 0;
 				}
-				else if (Time[i] == 0)//长按时间到（成功）
+			}
+			else if (S[i] == 3)//状态：按键已双击
+			{
+				if (CurrState[i] == KEY_UNPRESSED)
 				{
-					Time[i] = KEY_Time_REPEAT;//设定重复时间
-					Key_Flag[i] |= KEY_LONG;//LONG = 1
-					S[i] = 4;
+					S[i] = 0;
 				}
 			}
-			
 			else if (S[i] == 4)//状态：按键已长按
 			{
 				if (CurrState[i] == KEY_UNPRESSED)
@@ -182,7 +199,7 @@ void Key_Tick(void)//利用定时中断调用，获取通用的时间基准
 				}
 				else if (Time[i] == 0)
 				{
-					Time[i] = KEY_Time_REPEAT;//设定重复时间
+					Time[i] = KEY_Time_REPEAT;
 					Key_Flag[i] |= KEY_REPEAT;//REPEAT = 1
 					S[i] = 4;
 				}

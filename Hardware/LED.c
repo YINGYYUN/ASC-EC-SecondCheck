@@ -1,74 +1,165 @@
 #include "stm32f10x.h"                  // Device header
 
-#include "LED.h"
+uint16_t LED1_Mode;//是否闪灯标志
+uint16_t LED2_Mode;
+
+uint16_t LED1_Count;//计次变量
+uint16_t LED2_Count;
 
 void LED_Init(void)
 {
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB,ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA,ENABLE);
 	
 	GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 |GPIO_Pin_15 ;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2 ;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOB,&GPIO_InitStructure);
+	GPIO_Init(GPIOA,&GPIO_InitStructure);
 	
-	GPIO_SetBits(GPIOB, LED_ALL_PINS);
+	GPIO_SetBits(GPIOA, GPIO_Pin_1 | GPIO_Pin_2);
 }
 
-//便捷调用引脚
-static uint16_t LED_SearchPin(uint8_t pos)
+void LED1_SetMode(uint8_t Mode)//更改闪灯标志
 {
-    switch(pos)
-    {
-        case 0: return LED_PIN_0;			
-        case 1: return LED_PIN_1;
-        case 2: return LED_PIN_2;
-        case 3: return LED_PIN_3;
-        default: return 0;
-    }
-}
-static uint16_t LED_TimeCount = 0;//计时
-static uint16_t LED_Speed_Cur = LED_SPEED_LV0;//设定流水灯时间间隔
-static uint8_t LED_PIN_Cur = 0;//通过LED_SearchPin（）返回对应的引脚；
-static int8_t LED_Order = LED_Order_RIGHT;
-
-void LED_SetSpeed(uint16_t Speed)//更改流水灯时间间隔
-{
-	if(Speed != LED_Speed_Cur)
+	if(Mode != LED1_Mode)
 	{
-		switch(Speed)
-		{
-			case 0:
-				LED_Speed_Cur = LED_SPEED_LV0;
-				break;
-			case 1:
-				LED_Speed_Cur = LED_SPEED_LV1;
-				break;
-			case 2:
-				LED_Speed_Cur = LED_SPEED_LV2;
-				break;
-		}
+		LED1_Mode = Mode ;
+		LED1_Count = 0 ;
 	}
 }
 
-void LED_SetOrder(int8_t Order)//更改流水灯方向
+void LED2_SetMode(uint8_t Mode)//更改闪灯标志
 {
-	if(Order == LED_Order_RIGHT || Order == LED_Order_LEFT)
+	if(Mode != LED2_Mode)
 	{
-		LED_Order = Order ;
+		LED2_Mode = Mode ;
+		LED2_Count = 0 ;
 	}
+}
+
+void LED1_ON(void)
+{
+	GPIO_ResetBits(GPIOA, GPIO_Pin_1);
+}
+
+void LED1_OFF(void)
+{
+	GPIO_SetBits(GPIOA, GPIO_Pin_1);
+}
+
+void LED2_ON(void)
+{
+	GPIO_ResetBits(GPIOA, GPIO_Pin_2);
+}
+
+void LED2_OFF(void)
+{
+	GPIO_SetBits(GPIOA, GPIO_Pin_2);
 }
 
 void LED_Tick(void)
 {
-	LED_TimeCount ++;
-	LED_TimeCount %= 400;//防越界（目前阈值为114*10ms）
-	
-	if(LED_TimeCount >= LED_Speed_Cur)
+	if( LED1_Mode == 0 )
+	{	
+		LED1_OFF();
+	}
+	else if( LED1_Mode == 1 )
 	{
-		LED_TimeCount = 0;
-		LED_PIN_Cur = (LED_PIN_Cur + LED_Order + LED_COUNT)%LED_COUNT;
-		GPIO_SetBits(GPIOB, LED_ALL_PINS);
-		GPIO_ResetBits(GPIOB, LED_SearchPin(LED_PIN_Cur));
+		LED1_ON();
+	}
+	else if( LED1_Mode == 2 )//慢闪
+	{
+		LED1_Count++;
+		LED1_Count %= 1000 ;//计数周期防越界
+//		if( LED1_Count>=1000 )LED1_Count = 0 ;
+			
+		if( LED1_Count<500 )
+		{
+			LED1_ON();
+		}
+		else
+		{
+			LED1_OFF();
+		}
+	}
+	else if( LED1_Mode == 3 )//快闪
+	{
+		LED1_Count++;
+		LED1_Count %= 100 ;
+			
+		if( LED1_Count<50 )
+		{
+			LED1_ON();
+		}
+		else
+		{
+			LED1_OFF();
+		}
+	}
+	else if( LED1_Mode == 4 )//点闪
+	{
+		LED1_Count++;
+		LED1_Count %= 1000 ;
+			
+		if( LED1_Count<100 )
+		{
+			LED1_ON();
+		}
+		else
+		{
+			LED1_OFF();
+		}
+	}
+	
+	if( LED2_Mode == 0 )
+	{	
+		LED2_OFF();
+	}
+	else if( LED2_Mode == 1 )
+	{
+		LED2_ON();
+	}
+	else if( LED2_Mode == 2 )//慢闪
+	{
+		LED1_Count++;
+		LED1_Count %= 1000 ;//计数周期防越界
+//		if( LED1_Count>=1000 )LED1_Count = 0 ;
+			
+		if( LED2_Count<500 )
+		{
+			LED2_ON();
+		}
+		else
+		{
+			LED2_OFF();
+		}
+	}
+	else if( LED2_Mode == 3 )//快闪
+	{
+		LED2_Count++;
+		LED2_Count %= 100 ;
+			
+		if( LED2_Count<50 )
+		{
+			LED2_ON();
+		}
+		else
+		{
+			LED2_OFF();
+		}
+	}
+	else if( LED2_Mode == 4 )//点闪
+	{
+		LED2_Count++;
+		LED2_Count %= 1000 ;
+			
+		if( LED2_Count<100 )
+		{
+			LED2_ON();
+		}
+		else
+		{
+			LED2_OFF();
+		}
 	}
 }
