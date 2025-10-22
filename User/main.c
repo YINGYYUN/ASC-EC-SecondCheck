@@ -1,80 +1,52 @@
 #include "stm32f10x.h"  // Device header
 #include "Delay.h"
-#include "OLED.h"
-#include "Key.h"
 #include "Timer.h"
+#include "LED.h"
+#include "Key.h"
+#include "OLED.h"
 
-uint16_t Num1, Num2;
+/*OLED测试*/
+//int main(void)
+//{	
+//	OLED_Init();
+//	
+//	//江协OLED V2.0 UFT-8 演示实例
+//	//字体 OLED_8X16
+//	OLED_ShowString(0,0,"Hello,世界。",OLED_8X16);
+//	//整数位 2 ，小数位 3 ，字体 OLED_6X8
+//	OLED_ShowFloatNum(0,16,12.345,2,3,OLED_6X8);
+//	//经典格式化输出
+//	OLED_Printf(0,32,OLED_8X16,"Num=%d",666);
+//	
+//	//必要！！！使得以上函数刷新到OLED上
+//	OLED_Update();
+//	
+//	while(1)
+//	{
+//
+//	}
+//}
 
+
+/*LED测试*/
 int main(void)
-{	
-	OLED_Init();
-	Key_Init();
-	Timer_Init();
+{
+	LED_Init();
 	
-	OLED_ShowString(1, 1, "Num1:");
-	OLED_ShowString(2, 1, "Num2:");
-	
-	while(1)
+	while (1)
 	{
-		/*示例1*/
-//		if (Key_Check(KEY_HOLD))//按下B1时
-//		{
-//			Num1 = 1;
-//		}
-//		else
-//		{
-//			Num1 = 0;
-//		}
-		
-		/*示例2*/
-//		if (Key_Check(KEY_DOWN))//按下按键瞬间
-//		{
-//			Num1 ++;
-//		}
-//		if (Key_Check(KEY_UP))//松开按键瞬间
-//		{
-//			Num2 ++;
-//		}
-		
-		/*示例3*/
-//		if (Key_Check(KEY_SINGLE))
-//		{
-//			Num1 ++;
-//		}
-//		if (Key_Check(KEY_DOUBLE))
-//		{
-//			Num1 += 100;
-//		}
-//		if (Key_Check(KEY_LONG))
-//		{
-//			Num1 = 0;
-//		}
-//		
-		/*示例4*/
-		if	(Key_Check(KEY_1,KEY_SINGLE) || Key_Check(KEY_1,KEY_REPEAT))
-		{
-			Num1 ++;//单击加一，长按快速自增
-		}
-		if	(Key_Check(KEY_2,KEY_SINGLE) || Key_Check(KEY_2,KEY_REPEAT))
-		{
-			Num1 --;
-		}
-		if	(Key_Check(KEY_3,KEY_SINGLE))
-		{
-			Num1 = 0;
-		}
-		if	(Key_Check(KEY_4,KEY_LONG))
-		{
-			Num1 = 9999;
-		}
-		
-		
-		OLED_ShowNum(1, 6, Num1, 5);
-		OLED_ShowNum(2, 6, Num2, 5);
+		LED_ON();
+		Delay_ms(500);
+		LED_OFF();
+		Delay_ms(500);
+		LED_Turn();
+		Delay_ms(500);
+		LED_Turn();
+		Delay_ms(500);
 	}
-		
 }
+
+
 
 void TIM2_IRQHandler(void)
 {
