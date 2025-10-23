@@ -4,6 +4,8 @@
 #include "LED.h"
 #include "OLED.h"
 #include "Key.h"
+#include "Serial.h"
+#include <string.h>
 
 /*OLED测试*/
 //int main(void)
@@ -47,46 +49,94 @@
 //}
 
 /*TIM1定时器定时中断和非阻塞式按键测试*/
-uint16_t i = 0;
-uint16_t j = 0;
-uint8_t KeyNum;
+//uint16_t i = 0;
+//uint16_t j = 0;
+//uint8_t KeyNum;
 
-int main(void)
+//int main(void)
+//{
+//	OLED_Init();
+//	Key_Init();
+//	
+//	Timer_Init();
+//	
+//	while (1)
+//	{
+//		KeyNum = Key_GetNum();
+//		if(KeyNum == 1)//PA-按下
+//		{
+//			j++;
+//		}
+//		OLED_Printf(0,0,OLED_8X16,"i:%05d",i);
+//		OLED_Printf(0,16,OLED_8X16,"i:%05d",j);
+//		
+//		OLED_Update();
+//	}
+//}
+
+////由定时器中断自动执行;有利于多模块共用定时器定时
+//		//同时，需要防止中断重叠
+//		//一:减小模块内中断函数的内容，减小运行时间
+//		//二：增加定时器的基础时间
+//void TIM1_UP_IRQHandler(void)
+//{
+//	//检查标志位
+//	if (TIM_GetITStatus(TIM1,TIM_IT_Update) == SET )
+//	{
+//		i++;
+//		
+//		//用于Key模块的内部检测
+//		Key_Tick();
+//		//清除标志位
+//		TIM_ClearITPendingBit(TIM1,TIM_IT_Update);
+//	}
+//}
+
+/*串口接收文本测试*/
+
+int main()
 {
 	OLED_Init();
-	Key_Init();
+	LED_Init();
+	Serial_Init();
 	
-	Timer_Init();
+	OLED_ShowString(0, 0,"TxPacket",OLED_8X16);
+	OLED_ShowString(0, 32,"RxPacket",OLED_8X16);
+	OLED_Update();
 	
-	while (1)
+	while(1)
 	{
-		KeyNum = Key_GetNum();
-		if(KeyNum == 1)//PA-按下
+		if (Serial_RxFlag == 1)
 		{
-			j++;
+			OLED_ShowString(0, 48, "                ",OLED_8X16);
+			OLED_ShowString(0, 48, Serial_RxPacket,OLED_8X16);
+			OLED_Update();
+			
+			if (strcmp(Serial_RxPacket,"LED_ON") == 0)//判断指令
+			{
+				LED_ON();
+				Serial_SendString("LED_ON_OK\r\n"); //回传
+				OLED_ShowString(0, 16, "                ",OLED_8X16);
+				OLED_ShowString(0, 16, "LED_ON_OK",OLED_8X16);//显示
+				OLED_Update();
+			}
+			else if (strcmp(Serial_RxPacket,"LED_OFF") == 0)//判断指令
+			{
+				LED_OFF();
+				Serial_SendString("LED_OFF_OK\r\n"); //回传
+				OLED_ShowString(0, 16, "                ",OLED_8X16);
+				OLED_ShowString(2, 16, "LED_OFF_OK",OLED_8X16);//显示
+				OLED_Update();
+			}
+			else
+			{
+				Serial_SendString("ERROR_COMMAND\r\n"); //回传
+				OLED_ShowString(0, 16, "                ",OLED_8X16);
+				OLED_ShowString(0, 16, "ERROR_COMMAND",OLED_8X16);//显示
+				OLED_Update();
+			}
+			
+			Serial_RxFlag = 0;
 		}
-		OLED_Printf(0,0,OLED_8X16,"i:%05d",i);
-		OLED_Printf(0,16,OLED_8X16,"i:%05d",j);
-		
-		OLED_Update();
 	}
 }
-
-//由定时器中断自动执行;有利于多模块共用定时器定时
-		//同时，需要防止中断重叠
-		//一:减小模块内中断函数的内容，减小运行时间
-		//二：增加定时器的基础时间
-void TIM1_UP_IRQHandler(void)
-{
-	//检查标志位
-	if (TIM_GetITStatus(TIM1,TIM_IT_Update) == SET )
-	{
-		i++;
-		
-		//用于Key模块的内部检测
-		Key_Tick();
-		//清除标志位
-		TIM_ClearITPendingBit(TIM1,TIM_IT_Update);
-	}
-}
-

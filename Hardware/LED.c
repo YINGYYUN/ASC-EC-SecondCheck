@@ -1,11 +1,5 @@
 #include "stm32f10x.h"                  // Device header
 
-uint16_t LED1_Mode;//是否闪灯标志
-uint16_t LED2_Mode;
-
-uint16_t LED1_Count;//计次变量
-uint16_t LED2_Count;
-
 //PC13(测试LED)
 
 void LED_Init(void)
