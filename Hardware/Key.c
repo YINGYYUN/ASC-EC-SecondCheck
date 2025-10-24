@@ -2,6 +2,7 @@
 #include "Delay.h"
 
 uint8_t Key_Num;
+uint8_t Menu_State = 0;
 
 void Key_Init(void)
 {
@@ -51,6 +52,7 @@ void Key_Tick(void)
 		if (CurrState == 0 && PrevState != 0)
 		{
 			Key_Num = PrevState;
+			Menu_State = 1 - Menu_State;
 		}
 	}
 }

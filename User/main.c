@@ -7,6 +7,48 @@
 #include "Serial.h"
 #include <string.h>
 
+//Menu_State表示项目状态 0 / 1
+
+/*项目中心*/
+int main()
+{
+	LED_Init();
+	OLED_Init();
+	Key_Init();
+	Serial_Init();
+	
+	
+//	OLED_ShowString(0, 0, "ABCDEFGHIJKLMNOP",OLED_8X16);
+//	OLED_ShowString(0, 48, "A",OLED_8X16);
+//	OLED_ShowString(120, 48, "B",OLED_8X16);
+//	
+//	OLED_Update();
+	while(1)
+	{
+		if (Serial_RxFlag == 1)//收到对应格式的文本信息
+		{
+			Serial_Printf("Received: %s\r\n", Serial_RxPacket);
+			if (strstr(Serial_RxPacket, "speed%") != NULL) {
+				int16_t speed;
+				// 从字符串中提取“speed%”后面的数字
+				sscanf(Serial_RxPacket, "speed%%%hd", &speed);
+				if (speed > 100)speed = 100;
+				if (speed < -100)speed = -100;
+				Serial_Printf("Set_Speed%d",speed);				
+			} else {
+				Serial_SendString("ERROR_COMMAND\r\n");
+			}
+		Serial_RxFlag = 0;//重置标志位
+		}
+	}
+}
+
+
+
+
+
+
+
 /*OLED测试*/
 //int main(void)
 //{	
@@ -26,25 +68,6 @@
 //	while(1)
 //	{
 //
-//	}
-//}
-
-
-/*LED测试*/
-//int main(void)
-//{
-//	LED_Init();
-//	
-//	while (1)
-//	{
-//		LED_ON();
-//		Delay_ms(500);
-//		LED_OFF();
-//		Delay_ms(500);
-//		LED_Turn();
-//		Delay_ms(500);
-//		LED_Turn();
-//		Delay_ms(500);
 //	}
 //}
 
@@ -94,49 +117,50 @@
 
 /*串口接收文本测试*/
 
-int main()
-{
-	OLED_Init();
-	LED_Init();
-	Serial_Init();
-	
-	OLED_ShowString(0, 0,"TxPacket",OLED_8X16);
-	OLED_ShowString(0, 32,"RxPacket",OLED_8X16);
-	OLED_Update();
-	
-	while(1)
-	{
-		if (Serial_RxFlag == 1)
-		{
-			OLED_ShowString(0, 48, "                ",OLED_8X16);
-			OLED_ShowString(0, 48, Serial_RxPacket,OLED_8X16);
-			OLED_Update();
-			
-			if (strcmp(Serial_RxPacket,"LED_ON") == 0)//判断指令
-			{
-				LED_ON();
-				Serial_SendString("LED_ON_OK\r\n"); //回传
-				OLED_ShowString(0, 16, "                ",OLED_8X16);
-				OLED_ShowString(0, 16, "LED_ON_OK",OLED_8X16);//显示
-				OLED_Update();
-			}
-			else if (strcmp(Serial_RxPacket,"LED_OFF") == 0)//判断指令
-			{
-				LED_OFF();
-				Serial_SendString("LED_OFF_OK\r\n"); //回传
-				OLED_ShowString(0, 16, "                ",OLED_8X16);
-				OLED_ShowString(2, 16, "LED_OFF_OK",OLED_8X16);//显示
-				OLED_Update();
-			}
-			else
-			{
-				Serial_SendString("ERROR_COMMAND\r\n"); //回传
-				OLED_ShowString(0, 16, "                ",OLED_8X16);
-				OLED_ShowString(0, 16, "ERROR_COMMAND",OLED_8X16);//显示
-				OLED_Update();
-			}
-			
-			Serial_RxFlag = 0;
-		}
-	}
-}
+//int main()
+//{
+//	OLED_Init();
+//	LED_Init();
+//	Serial_Init();
+//	
+//	OLED_ShowString(0, 0,"TxPacket",OLED_8X16);
+//	OLED_ShowString(0, 32,"RxPacket",OLED_8X16);
+//	OLED_Update();
+//	
+//	while(1)
+//	{
+//		if (Serial_RxFlag == 1)
+//		{
+//			OLED_ShowString(0, 48, "                ",OLED_8X16);
+//			OLED_ShowString(0, 48, Serial_RxPacket,OLED_8X16);
+//			OLED_Update();
+//			
+//			if (strcmp(Serial_RxPacket,"LED_ON") == 0)//判断指令
+//			{
+//				LED_ON();
+//				Serial_SendString("LED_ON_OK\r\n"); //回传
+//				OLED_ShowString(0, 16, "                ",OLED_8X16);
+//				OLED_ShowString(0, 16, "LED_ON_OK",OLED_8X16);//显示
+//				OLED_Update();
+//			}
+//			else if (strcmp(Serial_RxPacket,"LED_OFF") == 0)//判断指令
+//			{
+//				LED_OFF();
+//				Serial_SendString("LED_OFF_OK\r\n"); //回传
+//				OLED_ShowString(0, 16, "                ",OLED_8X16);
+//				OLED_ShowString(2, 16, "LED_OFF_OK",OLED_8X16);//显示
+//				OLED_Update();
+//			}
+//			else
+//			{
+//				Serial_SendString("ERROR_COMMAND\r\n"); //回传
+//				OLED_ShowString(0, 16, "                ",OLED_8X16);
+//				OLED_ShowString(0, 16, "ERROR_COMMAND",OLED_8X16);//显示
+//				OLED_Update();
+//			}
+//			
+//			Serial_RxFlag = 0;
+//		}
+//	}
+//}
+
