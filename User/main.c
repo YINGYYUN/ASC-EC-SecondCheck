@@ -140,7 +140,7 @@ void TIM1_UP_IRQHandler(void)
 			
 			Speed1 = Encoder1_Get();
 			Location1 += Speed1;
-			Serial_Printf("%.2f\n", Speed1);
+			Serial_Printf("%.2f,%.2f\r\n", (float)Speed1, (float)Location1);
 		}
 		//用于Key模块的内部检测
 		Key_Tick();
