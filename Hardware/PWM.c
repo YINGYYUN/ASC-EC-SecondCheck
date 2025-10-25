@@ -20,7 +20,7 @@ void PWM_Init(void)
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseInitStructure.TIM_Period = 100 -1;		// ARR
+	TIM_TimeBaseInitStructure.TIM_Period = 200 -1;		// ARR
 	TIM_TimeBaseInitStructure.TIM_Prescaler = 720 - 1;		// PSC
 	TIM_TimeBaseInitStructure.TIM_RepetitionCounter = 0;
 	TIM_TimeBaseInit(TIM2, &TIM_TimeBaseInitStructure);
@@ -46,11 +46,11 @@ void PWM_Init(void)
 //这是单独更改CCR值的函数
 void PWM_SetCompare2(uint16_t Compare)
 {
-	TIM_SetCompare2(TIM2, Compare);  // 范围0~999（对应0%~100%）
+	TIM_SetCompare2(TIM2, Compare);  // 范围0~99（对应0%~99%）
 }
 
 // 设置右电机PWM占空比（PA2，TIM2_CH3）
 void PWM_SetCompare3(uint16_t Compare)
 {
-	TIM_SetCompare3(TIM2, Compare);  // 范围0~999（对应0%~100%）
+	TIM_SetCompare3(TIM2, Compare);  // 范围0~99（对应0%~99%）
 }

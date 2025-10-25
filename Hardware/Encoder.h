@@ -2,7 +2,8 @@
 #define __ENCODER_H
 
 void Encoder_Init(void);
-int16_t Encoder_Get(void);
+int16_t Encoder1_Get(void);
+int16_t Encoder1_Get(void);
 
 
 #endif
