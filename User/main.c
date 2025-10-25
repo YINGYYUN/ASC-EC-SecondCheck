@@ -36,7 +36,7 @@ int main()
 //	OLED_Update();
 	
 	Serial_SendString("READY\r\n");
-	Serial_Printf("Menu:%d\r\n",Menu_State);
+	if( Menu_State == 0 )Serial_SendString("SPEED SET MODE\r\n");
 	while(1)
 	{
 		KeyNum = Key_GetNum();
