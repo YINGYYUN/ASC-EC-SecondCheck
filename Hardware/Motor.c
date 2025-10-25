@@ -22,13 +22,13 @@ void Motor_SetPWM1(int8_t PWM)
 	{
 		GPIO_SetBits(GPIOB, GPIO_Pin_0);
 		GPIO_ResetBits(GPIOB, GPIO_Pin_1);
-		PWM_SetCompare3(PWM);
+		PWM_SetCompare2(PWM);
 	}
 	else
 	{
 		GPIO_ResetBits(GPIOB, GPIO_Pin_0);
 		GPIO_SetBits(GPIOB, GPIO_Pin_1);
-		PWM_SetCompare3(-PWM);
+		PWM_SetCompare2(-PWM);
 	}
 }
 

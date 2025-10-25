@@ -8,38 +8,102 @@
 #include "Motor.h"
 #include <string.h>
 
-//Menu_State表示项目状态 0 / 1
+
 
 /*项目中心*/
 int main()
 {
+	
 	LED_Init();
 	OLED_Init();
 	Key_Init();
 	Serial_Init();
+	Motor_Init();
+
+	Timer_Init();
+	//PWM在Motor模块内初始化并调用
 	
+	uint8_t KeyNum;
+	uint8_t Menu_State = 0;
+	//Menu_State表示项目状态 0:串口控制速度 / 1：电机同步
 	
+	Motor_SetPWM1(0);
+	Motor_SetPWM2(0);
 //	OLED_ShowString(0, 0, "ABCDEFGHIJKLMNOP",OLED_8X16);
 //	OLED_ShowString(0, 48, "A",OLED_8X16);
 //	OLED_ShowString(120, 48, "B",OLED_8X16);
 //	
 //	OLED_Update();
+	
+	Serial_SendString("READY\r\n");
+	Serial_Printf("Menu:%d\r\n",Menu_State);
 	while(1)
 	{
-		if (Serial_RxFlag == 1)//收到对应格式的文本信息
+		KeyNum = Key_GetNum();
+		if(KeyNum == 1)//按键按下
 		{
-			Serial_Printf("Received: %s\r\n", Serial_RxPacket);
-			if (strstr(Serial_RxPacket, "speed%") != NULL) {
-				int16_t speed;
-				// 从字符串中提取“speed%”后面的数字
-				sscanf(Serial_RxPacket, "speed%%%hd", &speed);
-				if (speed > 100)speed = 100;
-				if (speed < -100)speed = -100;
-				Serial_Printf("Set_Speed%d",speed);				
-			} else {
-				Serial_SendString("ERROR_COMMAND\r\n");
+			Menu_State = (Menu_State + 1) % 2;
+			switch(Menu_State)
+			{
+				case 0:
+					//回传当前状态为：速度设置
+					Serial_SendString("SPEED SET MODE\r\n");
+					break;
+				
+				case 1:
+//					Motor_SetPWM1(0);
+//					Motor_SetPWM2(0);
+					//回传当前状态为：速度同步
+					Serial_SendString("SPEED SYNC MODE\r\n");
+					break;
+				
+				default:
+					//回传当前状态为：？？？
+					Serial_SendString("???\r\n");
+					break;
 			}
-		Serial_RxFlag = 0;//重置标志位
+		}
+
+		switch(Menu_State)
+		{
+			
+			case 0:
+				OLED_ShowString(0, 0, "111",OLED_8X16);
+				OLED_Update();
+				if (Serial_RxFlag == 1)//收到对应格式的文本信息
+				{
+					Serial_Printf("Received: %s\r\n", Serial_RxPacket);
+					if (strstr(Serial_RxPacket, "speed%") != NULL) {
+						int16_t speed;
+						// 从字符串中提取“speed%”后面的数字
+						sscanf(Serial_RxPacket, "speed%%%hd", &speed);
+						if (speed >= 100)speed = 99;
+						if (speed <= -100)speed = -99;
+						Serial_Printf("Set_Speed:%d\r\n",speed);
+						Motor_SetPWM1(speed);
+						Motor_SetPWM2(speed);
+					} else {
+						Serial_SendString("ERROR_COMMAND\r\n");
+					}
+					Serial_RxFlag = 0;//重置标志位
+				}
+			
+				break;
+			case 1:
+				OLED_ShowString(0, 0, "222",OLED_8X16);
+				OLED_Update();
+			
+			
+				break;
+			
+			default:
+				OLED_ShowString(0, 0, "GI Nod-Krai ???",OLED_8X16);
+				OLED_Update();
+				//留一手
+				break;	
+			
+			
+			
 		}
 	}
 }
@@ -48,7 +112,21 @@ int main()
 
 
 
-
+//由定时器中断自动执行;有利于多模块共用定时器定时
+		//同时，需要防止中断重叠
+		//一:减小模块内中断函数的内容，减小运行时间
+		//二：增加定时器的基础时间
+void TIM1_UP_IRQHandler(void)
+{
+	//检查标志位
+	if (TIM_GetITStatus(TIM1,TIM_IT_Update) == SET )
+	{
+		//用于Key模块的内部检测
+		Key_Tick();
+		//清除标志位
+		TIM_ClearITPendingBit(TIM1,TIM_IT_Update);
+	}
+}
 
 /*OLED测试*/
 //int main(void)
@@ -164,4 +242,3 @@ int main()
 //		}
 //	}
 //}
-
