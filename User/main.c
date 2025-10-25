@@ -5,6 +5,7 @@
 #include "OLED.h"
 #include "Key.h"
 #include "Serial.h"
+#include "Motor.h"
 #include <string.h>
 
 //Menu_State表示项目状态 0 / 1
