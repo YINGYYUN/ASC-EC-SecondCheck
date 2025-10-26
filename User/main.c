@@ -8,10 +8,13 @@
 #include "Motor.h"
 #include "Encoder.h"
 #include <string.h>
+#include <math.h>
 
-int16_t Speed1;
-int16_t Location1;
+#define EPSILON 0.0001
 
+float Target1, Actual1, Out1;
+float Kp1 = 10, Ki1 = 0.5, Kd1 = 1;
+float Error01, Error11 ,ErrorInt1;
 /*项目中心*/
 int main()
 {
@@ -42,8 +45,9 @@ int main()
 	if( Menu_State == 0 )Serial_SendString("[INFO]SPEED SET MODE\r\n");
 	while(1)
 	{
+		//切换
 		KeyNum = Key_GetNum();
-		if(KeyNum == 1)//按键按下
+		if(KeyNum == 1)//按键PA0按下
 		{
 			Menu_State = (Menu_State + 1) % 2;
 			switch(Menu_State)
@@ -67,10 +71,13 @@ int main()
 			}
 		}
 
+		//功能
 		switch(Menu_State)
 		{
 			
 			case 0:
+				OLED_Printf(0, 0, OLED_8X16,"Speed Control");
+				OLED_Update();
 				if (Serial_RxFlag == 1)//收到对应格式的文本信息
 				{
 					Serial_Printf("[INFO]Received: %s\r\n", Serial_RxPacket);
@@ -78,23 +85,28 @@ int main()
 						int16_t speed;
 						// 从字符串中提取“speed%”后面的数字
 						sscanf(Serial_RxPacket, "speed%%%hd", &speed);
-						if (speed >= 100)speed = 99;
-						if (speed <= -100)speed = -99;
-						Serial_Printf("[INFO]Set_Speed:%d\r\n",speed);
-						Motor_SetPWM1(speed);
-//						Motor_SetPWM2(speed);
+						Target1 = speed ;
+						if (Target1 >= 100)Target1 = 99;
+						if (Target1 <= -100)Target1 = -99;
+						Serial_Printf("[INFO]Set_Speed:%d\r\n",(int)Target1);
 					} else {
 						Serial_SendString("[INFO]ERROR_COMMAND\r\n");
 					}
 					Serial_RxFlag = 0;//重置标志位
 				}
-				OLED_Printf(0,0,OLED_8X16,"Speed1:%+05d",Speed1);
-				OLED_Printf(0,16,OLED_8X16,"Location1:%+05d",Location1);
+				//%f显示浮点数，+始终显示正负号，
+				//4显示宽度，0表示数值前面补零，.0表示浮点数保留0位小数
+				OLED_Printf(0, 16, OLED_8X16, "Kp:%+04.0f", Kp1);
+				OLED_Printf(0, 32, OLED_8X16, "Ki:%+04.0f", Ki1);
+				OLED_Printf(0, 48, OLED_8X16, "Kd:%+04.0f", Kd1);
+								
+				OLED_Printf(64, 16, OLED_8X16, "Tar:%+04.0f", Target1);
+				OLED_Printf(64, 32, OLED_8X16, "Act:%+04.0f", Actual1);
+				OLED_Printf(64, 48, OLED_8X16, "Out:%+04.0f", Out1);
+				
 				OLED_Update();
 				
-				
-				
-				
+				Serial_Printf("%f,%f,%f\r\n", Target1, Actual1, Out1);		
 				
 			
 				break;
@@ -138,9 +150,27 @@ void TIM1_UP_IRQHandler(void)
 		{
 			Count = 0;
 			
-			Speed1 = Encoder1_Get();
-			Location1 += Speed1;
-			Serial_Printf("%.2f,%.2f\r\n", (float)Speed1, (float)Location1);
+			Actual1 = Encoder1_Get();
+			
+			Error11 = Error01;
+			Error01 = Target1 - Actual1;
+			
+			//调试时防Ki变非零时调控过猛
+			if ( fabs(Ki1) > EPSILON )
+			{
+			ErrorInt1 += Error01;
+			}
+			else
+			{
+			ErrorInt1 = 0;	
+			}
+			
+			Out1 = Kp1 * Error01 + Ki1 * ErrorInt1 + Kd1*(Error01 - Error11);
+			
+			if(Out1 >= 100) {Out1 = 99;}
+			if(Out1 <= -100) {Out1 = -99;}
+			
+			Motor_SetPWM1(Out1);
 		}
 		//用于Key模块的内部检测
 		Key_Tick();
@@ -149,117 +179,3 @@ void TIM1_UP_IRQHandler(void)
 	}
 }
 
-/*OLED测试*/
-//int main(void)
-//{	
-//	OLED_Init();
-//	
-//	//江协OLED V2.0 UFT-8 演示实例
-//	//字体 OLED_8X16
-//	OLED_ShowString(0,0,"Hello,世界。",OLED_8X16);
-//	//整数位 2 ，小数位 3 ，字体 OLED_6X8
-//	OLED_ShowFloatNum(0,16,12.345,2,3,OLED_6X8);
-//	//经典格式化输出
-//	OLED_Printf(0,32,OLED_8X16,"Num=%d",666);
-//	
-//	//必要！！！使得以上函数刷新到OLED上
-//	OLED_Update();
-//	
-//	while(1)
-//	{
-//
-//	}
-//}
-
-/*TIM1定时器定时中断和非阻塞式按键测试*/
-//uint16_t i = 0;
-//uint16_t j = 0;
-//uint8_t KeyNum;
-
-//int main(void)
-//{
-//	OLED_Init();
-//	Key_Init();
-//	
-//	Timer_Init();
-//	
-//	while (1)
-//	{
-//		KeyNum = Key_GetNum();
-//		if(KeyNum == 1)//PA-按下
-//		{
-//			j++;
-//		}
-//		OLED_Printf(0,0,OLED_8X16,"i:%05d",i);
-//		OLED_Printf(0,16,OLED_8X16,"i:%05d",j);
-//		
-//		OLED_Update();
-//	}
-//}
-
-////由定时器中断自动执行;有利于多模块共用定时器定时
-//		//同时，需要防止中断重叠
-//		//一:减小模块内中断函数的内容，减小运行时间
-//		//二：增加定时器的基础时间
-//void TIM1_UP_IRQHandler(void)
-//{
-//	//检查标志位
-//	if (TIM_GetITStatus(TIM1,TIM_IT_Update) == SET )
-//	{
-//		i++;
-//		
-//		//用于Key模块的内部检测
-//		Key_Tick();
-//		//清除标志位
-//		TIM_ClearITPendingBit(TIM1,TIM_IT_Update);
-//	}
-//}
-
-/*串口接收文本测试*/
-
-//int main()
-//{
-//	OLED_Init();
-//	LED_Init();
-//	Serial_Init();
-//	
-//	OLED_ShowString(0, 0,"TxPacket",OLED_8X16);
-//	OLED_ShowString(0, 32,"RxPacket",OLED_8X16);
-//	OLED_Update();
-//	
-//	while(1)
-//	{
-//		if (Serial_RxFlag == 1)
-//		{
-//			OLED_ShowString(0, 48, "                ",OLED_8X16);
-//			OLED_ShowString(0, 48, Serial_RxPacket,OLED_8X16);
-//			OLED_Update();
-//			
-//			if (strcmp(Serial_RxPacket,"LED_ON") == 0)//判断指令
-//			{
-//				LED_ON();
-//				Serial_SendString("LED_ON_OK\r\n"); //回传
-//				OLED_ShowString(0, 16, "                ",OLED_8X16);
-//				OLED_ShowString(0, 16, "LED_ON_OK",OLED_8X16);//显示
-//				OLED_Update();
-//			}
-//			else if (strcmp(Serial_RxPacket,"LED_OFF") == 0)//判断指令
-//			{
-//				LED_OFF();
-//				Serial_SendString("LED_OFF_OK\r\n"); //回传
-//				OLED_ShowString(0, 16, "                ",OLED_8X16);
-//				OLED_ShowString(2, 16, "LED_OFF_OK",OLED_8X16);//显示
-//				OLED_Update();
-//			}
-//			else
-//			{
-//				Serial_SendString("ERROR_COMMAND\r\n"); //回传
-//				OLED_ShowString(0, 16, "                ",OLED_8X16);
-//				OLED_ShowString(0, 16, "ERROR_COMMAND",OLED_8X16);//显示
-//				OLED_Update();
-//			}
-//			
-//			Serial_RxFlag = 0;
-//		}
-//	}
-//}

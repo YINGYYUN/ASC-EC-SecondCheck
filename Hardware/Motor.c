@@ -16,35 +16,41 @@ void Motor_Init(void)
 }
 
 //设置一号电机PWM占空比和电机方向（此处开环）
-void Motor_SetPWM1(int8_t PWM)
+void Motor_SetPWM1(int16_t PWM)
 {
-	if (PWM >= 0)
+	int16_t pwm = PWM ; 
+    if (pwm >= 100) pwm = 99;
+    if (pwm <= -100) pwm = -99;
+	if (pwm >= 0)
 	{
 		GPIO_SetBits(GPIOB, GPIO_Pin_12);
 		GPIO_ResetBits(GPIOB, GPIO_Pin_13);
-		PWM_SetCompare2(PWM);
+		PWM_SetCompare2(pwm);
 	}
 	else
 	{
 		GPIO_ResetBits(GPIOB, GPIO_Pin_12);
 		GPIO_SetBits(GPIOB, GPIO_Pin_13);
-		PWM_SetCompare2(-PWM);
+		PWM_SetCompare2(-pwm);
 	}
 }
 
 //设置二号电机PWM占空比和电机方向（此处开环）
-void Motor_SetPWM2(int8_t PWM)
+void Motor_SetPWM2(int16_t PWM)
 {
-	if (PWM >= 0)
+	int16_t pwm = PWM ;
+    if (pwm >= 100) pwm = 99;
+    if (pwm <= -100) pwm = -99;
+	if (pwm >= 0)
 	{
 		GPIO_SetBits(GPIOB, GPIO_Pin_10);
 		GPIO_ResetBits(GPIOB, GPIO_Pin_11);
-		PWM_SetCompare3(PWM);
+		PWM_SetCompare3(pwm);
 	}
 	else
 	{
 		GPIO_ResetBits(GPIOB, GPIO_Pin_10);
 		GPIO_SetBits(GPIOB, GPIO_Pin_11);
-		PWM_SetCompare3(-PWM);
+		PWM_SetCompare3(-pwm);
 	}
 }
