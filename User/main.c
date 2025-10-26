@@ -149,10 +149,14 @@ void TIM1_UP_IRQHandler(void)
 		Count++;
 		if(Count >= 40)
 		{
-			/*位置式PID*/
+			/*位置式PID（目前为选择性功能）*/
 			Count = 0;
+
+			//定速（目前为选择性功能）
+//			Actual1 = Encoder1_Get();
 			
-			Actual1 = Encoder1_Get();
+			//定位置（目前为选择性功能）
+			Actual1 += Encoder1_Get();
 			
 			Error11 = Error01;
 			Error01 = Target1 - Actual1;
@@ -174,7 +178,7 @@ void TIM1_UP_IRQHandler(void)
 			
 			Motor_SetPWM1(Out1);
 			
-			/*增量式PID*/
+			/*增量式PID（目前为选择性功能）*/
 //			Count = 0;
 //			
 //			Actual1 = Encoder1_Get();
