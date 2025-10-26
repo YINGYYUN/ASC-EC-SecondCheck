@@ -77,7 +77,8 @@ int main()
 		{
 			
 			case 0:
-				OLED_Printf(0, 0, OLED_8X16,"Speed Control");
+				OLED_Printf(0, 0, OLED_8X16,"Location Control");
+				//OLED_Printf(0, 0, OLED_8X16,"Speed Control");
 				OLED_Update();
 				if (Serial_RxFlag == 1)//收到对应格式的文本信息
 				{
@@ -87,8 +88,8 @@ int main()
 						// 从字符串中提取“speed%”后面的数字
 						sscanf(Serial_RxPacket, "speed%%%hd", &speed);
 						Target1 = speed ;
-						if (Target1 >= 100)Target1 = 99;
-						if (Target1 <= -100)Target1 = -99;
+	//					if (Target1 >= 100)Target1 = 99;
+	//					if (Target1 <= -100)Target1 = -99;
 						Serial_Printf("[INFO]Set_Speed:%d\r\n",(int)Target1);
 					} else {
 						Serial_SendString("[INFO]ERROR_COMMAND\r\n");
