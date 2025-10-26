@@ -12,73 +12,109 @@
 
 #define EPSILON 0.0001
 
+//PID托管标志位,预设为0，在进入对应功能后选择生效
+uint8_t M1_PID_ENABLE = 0, M2_PID_ENABLE = 0;
+
+//PID模式标志位
+//0 定速 ; 1 定位 ;
+//M2的定位模式已经异化为跟随模式
+uint8_t M1_Mode = 0, M2_Mode = 0;
+
 float Target1, Actual1, Out1;
 float Kp1 = 10, Ki1 = 0.5, Kd1 = 1;
 float Error01, Error11 ,ErrorInt1;
-//float Error21;
+int32_t M1_Location = 0;
+
+float Target2, Actual2, Out2;
+float Kp2 = 10, Ki2 = 0.5, Kd2 = 1;
+float Error02, Error12 ,ErrorInt2;
+int32_t M2_Location = 0;
+
 /*项目中心*/
 int main()
-{
-	
+{	
 	LED_Init();
 	OLED_Init();
 	Key_Init();
 	Serial_Init();
 	Motor_Init();
+	//PWM在Motor模块内初始化并调用
 	Encoder_Init();
 
 	Timer_Init();
-	//PWM在Motor模块内初始化并调用
+
 	
+	/*初始化菜单及功能1：速度设置*/	
 	uint8_t KeyNum;
-	uint8_t Menu_State = 0;
-	//Menu_State表示项目状态 0:电机速度设置 / 1：电机速度同步
 	
+	//Menu_State表示项目状态 0:电机速度设置 / 1：电机位置跟随
+	uint8_t Menu_State = 0;
+		
 	Motor_SetPWM1(0);
 	Motor_SetPWM2(0);
-//	OLED_ShowString(0, 0, "ABCDEFGHIJKLMNOP",OLED_8X16);
-//	OLED_ShowString(0, 48, "A",OLED_8X16);
-//	OLED_ShowString(120, 48, "B",OLED_8X16);
-//	
-//	OLED_Update();
+	
+	M1_PID_ENABLE = 1;
+	M2_PID_ENABLE = 0;
 	
 	Serial_SendString("[INFO]READY\r\n");
 	if( Menu_State == 0 )Serial_SendString("[INFO]SPEED SET MODE\r\n");
 	while(1)
 	{
-		//切换
+		//功能切换部分
 		KeyNum = Key_GetNum();
 		if(KeyNum == 1)//按键PA0按下
 		{
 			Menu_State = (Menu_State + 1) % 2;
 			switch(Menu_State)
 			{
-				case 0:
-					//回传当前状态为：速度设置
-					Serial_SendString("[INFO]SPEED SET MODE\r\n");
+				case 0://定速模式
+					Motor_SetPWM1(0);
+					Motor_SetPWM2(0);
+					M1_PID_ENABLE = 1;//M1自动
+					M2_PID_ENABLE = 0;//M2手动
+					
+					M1_Mode = 0;//M1定速
+				
+					//位置数据重置
+					M1_Location = 0;
+					M2_Location = 0;
+				
+					//回传当前状态为：定速模式
+					Serial_SendString("[INFO]SPEED CONTROL MODE\r\n");
 					break;
 				
-				case 1:
-//					Motor_SetPWM1(0);
-//					Motor_SetPWM2(0);
-					//回传当前状态为：速度同步
-					Serial_SendString("[INFO]SPEED SYNC MODE\r\n");
+				case 1://跟随模式
+					Motor_SetPWM1(0);
+					Motor_SetPWM2(0);
+					M1_PID_ENABLE = 0;//M1手动
+					M2_PID_ENABLE = 1;//M2自动
+					
+					M2_Mode = 1;//M2定位
+				
+					//位置数据重置
+					M1_Location = 0;
+					M2_Location = 0;
+				
+					//回传当前状态为：跟随模式
+					Serial_SendString("[INFO]FOLLOWING MODE\r\n");
 					break;
 				
 				default:
+					Motor_SetPWM1(0);
+					Motor_SetPWM2(0);
+					M1_PID_ENABLE = 0;//M1手动
+					M2_PID_ENABLE = 0;//M2手动
+				
 					//回传当前状态为：？？？
 					Serial_SendString("[INFO]???\r\n");
 					break;
 			}
 		}
-
-		//功能
+		//功能实施部分
 		switch(Menu_State)
-		{
-			
-			case 0:
-				OLED_Printf(0, 0, OLED_8X16,"Location Control");
-				//OLED_Printf(0, 0, OLED_8X16,"Speed Control");
+		{			
+			case 0://定速模式
+				OLED_Printf(0, 0, OLED_8X16,"Speed Control");
 				OLED_Update();
 				if (Serial_RxFlag == 1)//收到对应格式的文本信息
 				{
@@ -88,8 +124,8 @@ int main()
 						// 从字符串中提取“speed%”后面的数字
 						sscanf(Serial_RxPacket, "speed%%%hd", &speed);
 						Target1 = speed ;
-	//					if (Target1 >= 100)Target1 = 99;
-	//					if (Target1 <= -100)Target1 = -99;
+						if (Target1 >= 100)Target1 = 99;
+						if (Target1 <= -100)Target1 = -99;
 						Serial_Printf("[INFO]Set_Speed:%d\r\n",(int)Target1);
 					} else {
 						Serial_SendString("[INFO]ERROR_COMMAND\r\n");
@@ -98,9 +134,11 @@ int main()
 				}
 				//%f显示浮点数，+始终显示正负号，
 				//4显示宽度，0表示数值前面补零，.0表示浮点数保留0位小数
-				OLED_Printf(0, 16, OLED_8X16, "Kp:%+04.0f", Kp1);
-				OLED_Printf(0, 32, OLED_8X16, "Ki:%+04.0f", Ki1);
-				OLED_Printf(0, 48, OLED_8X16, "Kd:%+04.0f", Kd1);
+				
+				//暂时决定同步展示数据
+				OLED_Printf(0, 16, OLED_8X16, "P1:%4.2f", Kp1);
+				OLED_Printf(0, 32, OLED_8X16, "I1:%4.2f", Ki1);
+				OLED_Printf(0, 48, OLED_8X16, "D1:%4.2f", Kd1);
 								
 				OLED_Printf(64, 16, OLED_8X16, "Tar:%+04.0f", Target1);
 				OLED_Printf(64, 32, OLED_8X16, "Act:%+04.0f", Actual1);
@@ -109,31 +147,39 @@ int main()
 				OLED_Update();
 				
 				Serial_Printf("%f,%f,%f\r\n", Target1, Actual1, Out1);		
-				
-			
+							
 				break;
-			case 1:
-				OLED_ShowString(0, 0, "222",OLED_8X16);
+			case 1://跟随模式
+				OLED_Printf(0, 0, OLED_8X16,"Following Mode");
 				OLED_Update();
 			
+				//主要功能由PID托管
 			
+				//暂时决定同步展示数据
+				OLED_Printf(0, 16, OLED_8X16, "P2:%4.2f", Kp2);
+				OLED_Printf(0, 32, OLED_8X16, "I2:%4.2f", Ki2);
+				OLED_Printf(0, 48, OLED_8X16, "D2:%4.2f", Kp2);
+			
+				OLED_Printf(64, 16, OLED_8X16, "1:%+06.0f", M1_Location);
+				OLED_Printf(64, 32, OLED_8X16, "2:%+06.0f", M2_Location);
+				OLED_Printf(64, 48, OLED_8X16, "Out:%+04.0f", Out2);
+			
+				OLED_Update();
+			
+				Serial_Printf("%d,%d,%f\r\n", (int)M1_Location, (int)M2_Location, Out2);
+						
 				break;
 			
-			default:
+			default://????模式
+				//留一手
+				//权当一个彩蛋
 				OLED_ShowString(0, 0, "GI Nod-Krai ???",OLED_8X16);
 				OLED_Update();
-				//留一手
-				break;	
-			
-			
-			
+							
+				break;				
 		}
 	}
 }
-
-
-
-
 
 //由定时器中断自动执行;有利于多模块共用定时器定时
 		//同时，需要防止中断重叠
@@ -148,53 +194,77 @@ void TIM1_UP_IRQHandler(void)
 	if (TIM_GetITStatus(TIM1,TIM_IT_Update) == SET )
 	{
 		Count++;
-		if(Count >= 40)
+		
+		if(Count >= 10)
 		{
-			/*位置式PID（目前为选择性功能）*/
-			Count = 0;
 
-			//定速（目前为选择性功能）
-//			Actual1 = Encoder1_Get();
+			Count = 0;
 			
-			//定位置（目前为选择性功能）
-			Actual1 += Encoder1_Get();
+			Actual1 = Encoder1_Get();
+			Actual2 = Encoder2_Get();
 			
-			Error11 = Error01;
-			Error01 = Target1 - Actual1;
-			
-			//调试时防Ki变非零时调控过猛
-			if ( fabs(Ki1) > EPSILON )
+			M1_Location += Actual1;
+			M2_Location += Actual2;
+
+			if (M1_PID_ENABLE && M1_Mode == 0)
 			{
-			ErrorInt1 += Error01;
+				if (M1_Mode == 0)//定速模式
+				{
+					Error11 = Error01;
+					Error01 = Target1 - Actual1;
+					
+					//调试时防Ki变非零时调控过猛
+					if ( fabs(Ki1) > EPSILON )
+					{
+						ErrorInt1 += Error01;
+					}
+					else
+					{
+						ErrorInt1 = 0;	
+					}
+					
+					Out1 = Kp1 * Error01 + Ki1 * ErrorInt1 + Kd1 * (Error01 - Error11);
+					
+					if(Out1 >= 100) {Out1 = 99;}
+					if(Out1 <= -100) {Out1 = -99;}
+					
+					Motor_SetPWM1(Out1);
+				}
+				else if (M1_Mode == 1)
+				{
+					
+				}
 			}
-			else
+			
+			if (M2_PID_ENABLE)
 			{
-			ErrorInt1 = 0;	
+				if (M2_Mode == 0)//定速模式
+				{
+					
+				}				
+				else if (M2_Mode == 1)//定位（跟随）模式
+				{
+					Error12 = Error02;
+					Error02 = M1_Location - M2_Location;
+					
+					//调试时防Ki变非零时调控过猛
+					if ( fabs(Ki2) > EPSILON )
+					{
+						ErrorInt2 += Error02;
+					}
+					else
+					{
+						ErrorInt2 = 0;	
+					}
+					
+					Out2 = Kp2 * Error02 + Ki2 * ErrorInt2 + Kd2 * (Error02 - Error12);
+					
+					if(Out2 >= 100) {Out2 = 99;}
+					if(Out2 <= -100) {Out2 = -99;}
+					
+					Motor_SetPWM2(Out2);
+				}
 			}
-			
-			Out1 = Kp1 * Error01 + Ki1 * ErrorInt1 + Kd1*(Error01 - Error11);
-			
-			if(Out1 >= 100) {Out1 = 99;}
-			if(Out1 <= -100) {Out1 = -99;}
-			
-			Motor_SetPWM1(Out1);
-			
-			/*增量式PID（目前为选择性功能）*/
-//			Count = 0;
-//			
-//			Actual1 = Encoder1_Get();
-//			
-//			Error21 = Error11;
-//			Error11 = Error01;
-//			Error01 = Target1 - Actual1;
-//			
-//	
-//			Out1 += Kp1 * (Error01 - Error11) + Ki1 * Error01 + Kd1*(Error01 - 2 * Error11 + Error21);
-//			
-//			if(Out1 >= 100) {Out1 = 99;}
-//			if(Out1 <= -100) {Out1 = -99;}
-//			
-//			Motor_SetPWM1(Out1);
 		}
 		//用于Key模块的内部检测
 		Key_Tick();

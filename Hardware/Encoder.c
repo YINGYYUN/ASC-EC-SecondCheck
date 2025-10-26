@@ -18,8 +18,8 @@ void Encoder2_Init(void)
     TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
     TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
     TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-    TIM_TimeBaseInitStructure.TIM_Period = 65535;  // 最大计数，避免溢出
-    TIM_TimeBaseInitStructure.TIM_Prescaler = 0;    // 不分频，保证精度
+    TIM_TimeBaseInitStructure.TIM_Period = 65536 - 1;  // 最大计数，避免溢出
+    TIM_TimeBaseInitStructure.TIM_Prescaler = 1 - 1;    // 不分频，保证精度
     TIM_TimeBaseInitStructure.TIM_RepetitionCounter = 0;
     TIM_TimeBaseInit(TIM3, &TIM_TimeBaseInitStructure);
     
@@ -36,8 +36,7 @@ void Encoder2_Init(void)
     TIM_ICInit(TIM3, &TIM_ICInitStructure);
     
     // 5. 配置编码器模式（CH1+CH2正交解码）
-    TIM_EncoderInterfaceConfig(TIM3, TIM_EncoderMode_TI12, 
-                              TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
+    TIM_EncoderInterfaceConfig(TIM3, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
     
     // 6. 启动定时器
     TIM_Cmd(TIM3, ENABLE);
@@ -61,8 +60,8 @@ void Encoder1_Init(void)
     TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
     TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
     TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-    TIM_TimeBaseInitStructure.TIM_Period = 65535;
-    TIM_TimeBaseInitStructure.TIM_Prescaler = 0;
+    TIM_TimeBaseInitStructure.TIM_Period = 65536 - 1;
+    TIM_TimeBaseInitStructure.TIM_Prescaler = 1 - 1;
     TIM_TimeBaseInitStructure.TIM_RepetitionCounter = 0;
     TIM_TimeBaseInit(TIM4, &TIM_TimeBaseInitStructure);
     
@@ -79,8 +78,7 @@ void Encoder1_Init(void)
     TIM_ICInit(TIM4, &TIM_ICInitStructure);
     
     // 5. 配置编码器模式（CH1+CH2正交解码）
-    TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12, 
-                              TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
+    TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
     
     // 6. 启动定时器
     TIM_Cmd(TIM4, ENABLE);
