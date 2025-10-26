@@ -14,7 +14,8 @@
 
 float Target1, Actual1, Out1;
 float Kp1 = 10, Ki1 = 0.5, Kd1 = 1;
-float Error01, Error11 ,Error21;
+float Error01, Error11 ,ErrorInt1;
+//float Error21;
 /*项目中心*/
 int main()
 {
@@ -148,21 +149,47 @@ void TIM1_UP_IRQHandler(void)
 		Count++;
 		if(Count >= 40)
 		{
+			/*位置式PID*/
 			Count = 0;
 			
 			Actual1 = Encoder1_Get();
 			
-			Error21 = Error11;
 			Error11 = Error01;
 			Error01 = Target1 - Actual1;
 			
-	
-			Out1 += Kp1 * (Error01 - Error11) + Ki1 * Error01 + Kd1*(Error01 - 2 * Error11 + Error21);
+			//调试时防Ki变非零时调控过猛
+			if ( fabs(Ki1) > EPSILON )
+			{
+			ErrorInt1 += Error01;
+			}
+			else
+			{
+			ErrorInt1 = 0;	
+			}
+			
+			Out1 = Kp1 * Error01 + Ki1 * ErrorInt1 + Kd1*(Error01 - Error11);
 			
 			if(Out1 >= 100) {Out1 = 99;}
 			if(Out1 <= -100) {Out1 = -99;}
 			
 			Motor_SetPWM1(Out1);
+			
+			/*增量式PID*/
+//			Count = 0;
+//			
+//			Actual1 = Encoder1_Get();
+//			
+//			Error21 = Error11;
+//			Error11 = Error01;
+//			Error01 = Target1 - Actual1;
+//			
+//	
+//			Out1 += Kp1 * (Error01 - Error11) + Ki1 * Error01 + Kd1*(Error01 - 2 * Error11 + Error21);
+//			
+//			if(Out1 >= 100) {Out1 = 99;}
+//			if(Out1 <= -100) {Out1 = -99;}
+//			
+//			Motor_SetPWM1(Out1);
 		}
 		//用于Key模块的内部检测
 		Key_Tick();
