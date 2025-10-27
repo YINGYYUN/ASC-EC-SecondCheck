@@ -21,12 +21,12 @@ uint8_t M1_PID_ENABLE = 0, M2_PID_ENABLE = 0;
 uint8_t M1_Mode = 0, M2_Mode = 0;
 
 float Target1, Actual1, Out1;
-float Kp1 = 10, Ki1 = 0.5, Kd1 = 1;
+float Kp1 = 1, Ki1 = 0.5, Kd1 = 1;
 float Error01, Error11 ,ErrorInt1;
 int32_t M1_Location = 0;
 
 float Target2, Actual2, Out2;
-float Kp2 = 10, Ki2 = 0.5, Kd2 = 1;
+float Kp2 = 1, Ki2 = 0.5, Kd2 = 1;
 float Error02, Error12 ,ErrorInt2;
 int32_t M2_Location = 0;
 
@@ -118,7 +118,7 @@ int main()
 				OLED_Update();
 				if (Serial_RxFlag == 1)//收到对应格式的文本信息
 				{
-					Serial_Printf("[INFO]Received: %s\r\n", Serial_RxPacket);
+					Serial_Printf("[INFO]Received: %s\r\n", Serial_RxPacket);//状态回传上位机
 					if (strstr(Serial_RxPacket, "speed%") != NULL) {
 						int16_t speed;
 						// 从字符串中提取“speed%”后面的数字
@@ -126,9 +126,9 @@ int main()
 						Target1 = speed ;
 						if (Target1 >= 100)Target1 = 99;
 						if (Target1 <= -100)Target1 = -99;
-						Serial_Printf("[INFO]Set_Speed:%d\r\n",(int)Target1);
+						Serial_Printf("[INFO]Set_Speed:%d\r\n",(int)Target1);//状态回传上位机
 					} else {
-						Serial_SendString("[INFO]ERROR_COMMAND\r\n");
+						Serial_SendString("[INFO]ERROR_COMMAND\r\n");//状态回传上位机
 					}
 					Serial_RxFlag = 0;//重置标志位
 				}
@@ -206,24 +206,32 @@ void TIM1_UP_IRQHandler(void)
 			M1_Location += Actual1;
 			M2_Location += Actual2;
 
-			if (M1_PID_ENABLE && M1_Mode == 0)
+			if (M1_PID_ENABLE )
 			{
 				if (M1_Mode == 0)//定速模式
 				{
 					Error11 = Error01;
 					Error01 = Target1 - Actual1;
 					
+					/*输入死区*/
+//					if (fabs(Error01) < 死区阈值)
+//					{
+//						Out1 = 0;
+//					}
 					//调试时防Ki变非零时调控过猛
-					if ( fabs(Ki1) > EPSILON )
-					{
-						ErrorInt1 += Error01;
-					}
-					else
-					{
-						ErrorInt1 = 0;	
-					}
-					
-					Out1 = Kp1 * Error01 + Ki1 * ErrorInt1 + Kd1 * (Error01 - Error11);
+//					else
+//					{
+						if ( fabs(Ki1) > EPSILON )
+						{
+							ErrorInt1 += Error01;
+						}
+						else
+						{
+							ErrorInt1 = 0;	
+						}
+						
+						Out1 = Kp1 * Error01 + Ki1 * ErrorInt1 + Kd1 * (Error01 - Error11);						
+//					}
 					
 					if(Out1 >= 100) {Out1 = 99;}
 					if(Out1 <= -100) {Out1 = -99;}

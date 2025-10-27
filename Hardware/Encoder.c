@@ -28,11 +28,11 @@ void Encoder2_Init(void)
     TIM_ICStructInit(&TIM_ICInitStructure);
     // 配置CH1（PA6，编码器A相）
     TIM_ICInitStructure.TIM_Channel = TIM_Channel_1;
-    TIM_ICInitStructure.TIM_ICFilter = 0xF;  // 最大滤波，过滤高频噪声
+    TIM_ICInitStructure.TIM_ICFilter = 0x3;
     TIM_ICInit(TIM3, &TIM_ICInitStructure);
     // 配置CH2（PA7，编码器B相）
     TIM_ICInitStructure.TIM_Channel = TIM_Channel_2;
-    TIM_ICInitStructure.TIM_ICFilter = 0xF;
+    TIM_ICInitStructure.TIM_ICFilter = 0x3;
     TIM_ICInit(TIM3, &TIM_ICInitStructure);
     
     // 5. 配置编码器模式（CH1+CH2正交解码）
@@ -70,11 +70,11 @@ void Encoder1_Init(void)
     TIM_ICStructInit(&TIM_ICInitStructure);
     // 配置CH1（PB6，编码器A相）
     TIM_ICInitStructure.TIM_Channel = TIM_Channel_1;
-    TIM_ICInitStructure.TIM_ICFilter = 0xF;
+    TIM_ICInitStructure.TIM_ICFilter = 0x3;
     TIM_ICInit(TIM4, &TIM_ICInitStructure);
     // 配置CH2（PB7，编码器B相）
     TIM_ICInitStructure.TIM_Channel = TIM_Channel_2;
-    TIM_ICInitStructure.TIM_ICFilter = 0xF;
+    TIM_ICInitStructure.TIM_ICFilter = 0x3;
     TIM_ICInit(TIM4, &TIM_ICInitStructure);
     
     // 5. 配置编码器模式（CH1+CH2正交解码）
@@ -94,7 +94,8 @@ void Encoder_Init(void)
 // 读取一号电机编码器计数值（TIM4）
 int16_t Encoder1_Get(void)
 {
-    int16_t temp = TIM_GetCounter(TIM4);
+    int16_t temp ;
+	temp = TIM_GetCounter(TIM4);
     TIM_SetCounter(TIM4, 0);  // 读取后清零，便于计算单位时间转速
     return temp;
 }
@@ -102,7 +103,8 @@ int16_t Encoder1_Get(void)
 // 读取二号电机编码器计数值（TIM3）
 int16_t Encoder2_Get(void)
 {
-    int16_t temp = TIM_GetCounter(TIM3);
-    TIM_SetCounter(TIM3, 0);
+    int16_t temp ;
+	temp = TIM_GetCounter(TIM3);
+	TIM_SetCounter(TIM3, 0);
     return temp;
 }
