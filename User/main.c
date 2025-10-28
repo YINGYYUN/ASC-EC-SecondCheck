@@ -21,12 +21,12 @@ uint8_t M1_PID_ENABLE = 0, M2_PID_ENABLE = 0;
 uint8_t M1_Mode = 0, M2_Mode = 0;
 
 float Target1, Actual1, Out1;
-float Kp1 = 1, Ki1 = 0.5, Kd1 = 1;
+float Kp1 = 4, Ki1 = 0.8, Kd1 = 1;
 float Error01, Error11 ,ErrorInt1;
 int32_t M1_Location = 0;
 
 float Target2, Actual2, Out2;
-float Kp2 = 1, Ki2 = 0.5, Kd2 = 1;
+float Kp2 = 2, Ki2 = 0.3, Kd2 = 3;
 float Error02, Error12 ,ErrorInt2;
 int32_t M2_Location = 0;
 
@@ -75,9 +75,19 @@ int main()
 					
 					M1_Mode = 0;//M1定速
 				
+					OLED_Clear();
+					OLED_Update();
+				
 					//位置数据重置
 					M1_Location = 0;
 					M2_Location = 0;
+						// 清除PID历史积累，防止模式切换后遗留积分影响输出
+						ErrorInt1 = 0;
+						ErrorInt2 = 0;
+						Error01 = 0;
+						Error02 = 0;
+						Error11 = 0;
+						Error12 = 0;
 				
 					//回传当前状态为：定速模式
 					Serial_SendString("[INFO]SPEED CONTROL MODE\r\n");
@@ -91,9 +101,19 @@ int main()
 					
 					M2_Mode = 1;//M2定位
 				
+					OLED_Clear();
+					OLED_Update();
+				
 					//位置数据重置
 					M1_Location = 0;
 					M2_Location = 0;
+						// 清除PID历史积累，防止模式切换后遗留积分影响输出
+						ErrorInt1 = 0;
+						ErrorInt2 = 0;
+						Error01 = 0;
+						Error02 = 0;
+						Error11 = 0;
+						Error12 = 0;
 				
 					//回传当前状态为：跟随模式
 					Serial_SendString("[INFO]FOLLOWING MODE\r\n");
@@ -126,6 +146,9 @@ int main()
 						Target1 = speed ;
 						if (Target1 >= 100)Target1 = 99;
 						if (Target1 <= -100)Target1 = -99;
+						// 重置积分和历史误差，避免之前的积分项继续驱动电机（积分风暴）
+						ErrorInt1 = 0;
+						Error01 = 0;
 						Serial_Printf("[INFO]Set_Speed:%d\r\n",(int)Target1);//状态回传上位机
 					} else {
 						Serial_SendString("[INFO]ERROR_COMMAND\r\n");//状态回传上位机
@@ -156,12 +179,13 @@ int main()
 				//主要功能由PID托管
 			
 				//暂时决定同步展示数据
+			
 				OLED_Printf(0, 16, OLED_8X16, "P2:%4.2f", Kp2);
 				OLED_Printf(0, 32, OLED_8X16, "I2:%4.2f", Ki2);
 				OLED_Printf(0, 48, OLED_8X16, "D2:%4.2f", Kp2);
 			
-				OLED_Printf(64, 16, OLED_8X16, "1:%+06.0f", M1_Location);
-				OLED_Printf(64, 32, OLED_8X16, "2:%+06.0f", M2_Location);
+				OLED_Printf(64, 16, OLED_8X16, "1:%06d", M1_Location);
+				OLED_Printf(64, 32, OLED_8X16, "2:%06d", M2_Location);
 				OLED_Printf(64, 48, OLED_8X16, "Out:%+04.0f", Out2);
 			
 				OLED_Update();
@@ -213,25 +237,26 @@ void TIM1_UP_IRQHandler(void)
 					Error11 = Error01;
 					Error01 = Target1 - Actual1;
 					
+					ErrorInt1 += Error01;
+					
 					/*输入死区*/
-//					if (fabs(Error01) < 死区阈值)
-//					{
-//						Out1 = 0;
-//					}
-					//调试时防Ki变非零时调控过猛
-//					else
-//					{
-						if ( fabs(Ki1) > EPSILON )
-						{
-							ErrorInt1 += Error01;
-						}
-						else
-						{
-							ErrorInt1 = 0;	
-						}
+					if (fabs(Error01) < 2)
+					{
+						Out1 = Kp1 * Error01 * 0.5; 
+					}
+
+					else
+					{
 						
-						Out1 = Kp1 * Error01 + Ki1 * ErrorInt1 + Kd1 * (Error01 - Error11);						
-//					}
+						/* 积分项累加并限幅（防积分风暴） */
+
+						float IntOut1 = Ki1 * ErrorInt1;
+						/* 把积分输出限制在合理范围，避免单次积分项把输出推到极限 */
+						if (IntOut1 > 100) IntOut1 = 100;
+						if (IntOut1 < -100) IntOut1 = -100;
+
+						Out1 = Kp1 * Error01 + IntOut1 + Kd1 * (Error01 - Error11);
+					}
 					
 					if(Out1 >= 100) {Out1 = 99;}
 					if(Out1 <= -100) {Out1 = -99;}
@@ -255,17 +280,30 @@ void TIM1_UP_IRQHandler(void)
 					Error12 = Error02;
 					Error02 = M1_Location - M2_Location;
 					
-					//调试时防Ki变非零时调控过猛
-					if ( fabs(Ki2) > EPSILON )
+					float IntOut2 = 0;
+					if (fabs(Error02) > 70)
 					{
-						ErrorInt2 += Error02;
+						ErrorInt2 = 0;
 					}
 					else
 					{
-						ErrorInt2 = 0;	
+						/* 积分项累加并限幅（防积分风暴） */
+						if ( fabs(Ki2) > EPSILON )
+						{
+							ErrorInt2 += Error02;
+							if (ErrorInt2 > 200) ErrorInt2 = 200;
+							if (ErrorInt2 < -200) ErrorInt2 = -200;
+						}
+						else
+						{
+							ErrorInt2 = 0;
+						}
+						float IntOut2 = Ki2 * ErrorInt2;
+						if (IntOut2 > 100) IntOut2 = 100;
+						if (IntOut2 < -100) IntOut2 = -100;						
 					}
-					
-					Out2 = Kp2 * Error02 + Ki2 * ErrorInt2 + Kd2 * (Error02 - Error12);
+
+					Out2 = Kp2 * Error02 + IntOut2 + Kd2 * (Error02 - Error12);
 					
 					if(Out2 >= 100) {Out2 = 99;}
 					if(Out2 <= -100) {Out2 = -99;}
