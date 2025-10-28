@@ -281,32 +281,44 @@ void TIM1_UP_IRQHandler(void)
 					Error02 = M1_Location - M2_Location;
 					
 					float IntOut2 = 0;
-					if (fabs(Error02) > 70)
+					
+					
+					if (fabs(Error02) < 10)
 					{
+					// 误差过小（机械抖动/噪声），直接输出0，清零积分
+						Out2 = 0;
 						ErrorInt2 = 0;
 					}
 					else
 					{
-						/* 积分项累加并限幅（防积分风暴） */
-						if ( fabs(Ki2) > EPSILON )
-						{
-							ErrorInt2 += Error02;
-							if (ErrorInt2 > 200) ErrorInt2 = 200;
-							if (ErrorInt2 < -200) ErrorInt2 = -200;
-						}
-						else
+						
+						if (fabs(Error02) > 70)
 						{
 							ErrorInt2 = 0;
 						}
-						float IntOut2 = Ki2 * ErrorInt2;
-						if (IntOut2 > 100) IntOut2 = 100;
-						if (IntOut2 < -100) IntOut2 = -100;						
-					}
+						else
+						{
+							/* 积分项累加并限幅（防积分风暴） */
+							if ( fabs(Ki2) > EPSILON )
+							{
+								ErrorInt2 += Error02;
+								if (ErrorInt2 > 200) ErrorInt2 = 200;
+								if (ErrorInt2 < -200) ErrorInt2 = -200;
+							}
+							else
+							{
+								ErrorInt2 = 0;
+							}
+							IntOut2 = Ki2 * ErrorInt2;
+							if (IntOut2 > 100) IntOut2 = 100;
+							if (IntOut2 < -100) IntOut2 = -100;						
+						}
 
-					Out2 = Kp2 * Error02 + IntOut2 + Kd2 * (Error02 - Error12);
-					
-					if(Out2 >= 100) {Out2 = 99;}
-					if(Out2 <= -100) {Out2 = -99;}
+						Out2 = Kp2 * Error02 + IntOut2 + Kd2 * (Error02 - Error12);
+						
+						if(Out2 >= 100) {Out2 = 99;}
+						if(Out2 <= -100) {Out2 = -99;}
+					}
 					
 					Motor_SetPWM2(Out2);
 				}
