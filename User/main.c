@@ -21,7 +21,7 @@ uint8_t M1_PID_ENABLE = 0, M2_PID_ENABLE = 0;
 uint8_t M1_Mode = 0, M2_Mode = 0;
 
 float Target1, Actual1, Out1;
-float Kp1 = 4, Ki1 = 0.8, Kd1 = 1;
+float Kp1 = 0.5, Ki1 = 0.5, Kd1 = 10;
 float Error01, Error11 ,ErrorInt1;
 int32_t M1_Location = 0;
 
@@ -281,7 +281,6 @@ void TIM1_UP_IRQHandler(void)
 					Error02 = M1_Location - M2_Location;
 					
 					float IntOut2 = 0;
-					
 					
 					if (fabs(Error02) < 10)
 					{
